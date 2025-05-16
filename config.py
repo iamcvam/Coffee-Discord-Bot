@@ -9,7 +9,13 @@ BOT_CONFIG = {
     # Core identity
     'name': 'Coffee',
     'ai_model': 'google/gemini-2.0-flash-001',
-    
+
+# Parents defined by their unique Discord User IDs
+PARENTS = {
+    "mother": 1249972213113684011,  # Replace with actual Discord user ID
+    "father": 980713680343806032   # Replace with actual Discord user ID
+}
+
     # Channel activation settings
     'default_active': True,  # Whether bot is active by default
     
