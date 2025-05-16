@@ -30,10 +30,16 @@ intents.guilds = True
 # Use a hidden command prefix nobody would use accidentally
 bot = commands.Bot(command_prefix='$$!Coffee!$$', intents=intents, help_command=None)
 
-# Track last parent interactions
+# Track last parent interactions and daily compliment status
 last_parent_interactions = {
     'father': None,
     'mother': None
+}
+
+# Track daily compliment status for mom
+daily_compliment_status = {
+    'last_compliment_date': None,
+    'has_complimented_today': False
 }
 
 def is_parent(user_id: int) -> tuple[bool, str]:
@@ -49,14 +55,669 @@ def is_parent(user_id: int) -> tuple[bool, str]:
 
 def should_greet_parent(parent_role: str) -> bool:
     """
-    Check if we should greet the parent based on time since last interaction
+    Check if we should greet the parent based on time since last interaction.
+    Returns True if it's been more than 30 minutes since last interaction.
     """
-    last_interaction = last_parent_interactions[parent_role]
-    if last_interaction is None:
+    last_interaction = last_parent_interactions.get(parent_role)
+    if not last_interaction:
         return True
     
     time_since_last = datetime.now() - last_interaction
-    return time_since_last > timedelta(minutes=30)
+    return time_since_last.total_seconds() > 1800  # 30 minutes = 1800 seconds
+
+def can_compliment_mom() -> bool:
+    """
+    Check if we can compliment mom today.
+    Returns True if we haven't complimented her today.
+    """
+    # Get current date
+    current_date = datetime.now().date()
+    
+    # Check if we've already complimented today
+    if daily_compliment_status.get('last_compliment_date') == current_date:
+        return False
+    
+    # Update the last compliment date
+    daily_compliment_status['last_compliment_date'] = current_date
+    return True
+
+def get_parent_greeting(parent_role: str) -> str:
+    """
+    Get an appropriate greeting for the parent, including occasional compliment for mom.
+    """
+    # Get personality settings
+    personality = BOT_CONFIG.get('ai_personality', {})
+    formality_level = personality.get('formality', 5)
+    
+    # Select appropriate formality level
+    if formality_level <= 3:
+        formality = 'casual'
+    elif formality_level <= 7:
+        formality = 'balanced'
+    else:
+        formality = 'formal'
+    
+    # Base greetings for each parent and formality level
+    greetings = {
+        'father': {
+            'casual': [
+                "hello pops! 👋",
+                "hey pops!",
+                "hi, pops! what's up?",
+                "yo pops!",
+                "hey dad!",
+                "hi dad! how's it going?",
+                "hey there, pops!",
+                "what's up, dad?",
+                "hi pops! how's your day?",
+                "yo dad!",
+                "hey there, dad!",
+                "what's happening, pops?",
+                "hi dad! what's new?",
+                "hey pops! how's everything?",
+                "what's up, pops?"
+            ],
+            'balanced': [
+                "Hello dad!",
+                "Hi dad!",
+                "Hey there dad!",
+                "Hello there dad!",
+                "Hi there dad!",
+                "Hello pops!",
+                "Hi pops!",
+                "Hey there pops!",
+                "Hello there pops!",
+                "Hi there pops!"
+            ],
+            'formal': [
+                "Hello father!",
+                "Greetings father!",
+                "Good day father!",
+                "Hello there father!",
+                "Greetings to you father!"
+            ]
+        },
+        'mother': {
+            'casual': [
+                "hello mommy! 👋💖",
+                "hey mom! 💝",
+                "hi, mommy! how are you doing? 💖",
+                "hey there, mom! 💫",
+                "hi mommy! how's your day? ✨",
+                "hey mom! hope you're having a great day! 💖",
+                "hi mommy! how's everything? 💝",
+                "hey there, mom! 💫",
+                "hi mom! how are you? ✨",
+                "hey mommy! 💖",
+                "hi mom! how's your day going? 💝",
+                "hey there, mommy! 💫",
+                "hi mom! what's new? ✨",
+                "hey mommy! how's everything? 💖",
+                "hi mom! how are you doing? 💝"
+            ],
+            'balanced': [
+                "Hello mom! 💖",
+                "Hi mom! How are you today? 💝",
+                "Hey there mom! 💫",
+                "Hello there mom! ✨",
+                "Hi there mom! 💖",
+                "Hello mother! 💝",
+                "Hi mother! 💫",
+                "Hey there mother! ✨",
+                "Hello there mother! 💖",
+                "Hi there mother! 💝"
+            ],
+            'formal': [
+                "Hello mother! 💖",
+                "Greetings mother! 💝",
+                "Good day mother! 💫",
+                "Hello there mother! ✨",
+                "Greetings to you mother! 💖"
+            ]
+        }
+    }
+    
+    # Get base greeting
+    greeting = random.choice(greetings[parent_role][formality])
+    
+    # For mom, add a compliment only if we haven't complimented today
+    if parent_role == "mother" and can_compliment_mom():
+        # Compliments based on formality level
+        compliments = {
+            'casual': [
+                "you look absolutely beautiful today! 💖",
+                "you're the most gorgeous person ever! ✨",
+                "you're stunning beyond words! 🌟",
+                "you're looking amazing as always! 💫",
+                "you're the best mom in the world! 💝",
+                "you're looking so beautiful today! 💖",
+                "you're absolutely gorgeous! ✨",
+                "you're stunning in every way! 🌟",
+                "you're looking wonderful! 💫",
+                "you're the most amazing mom! 💝"
+            ],
+            'balanced': [
+                "you look absolutely beautiful today! 💖",
+                "you're the most gorgeous person I know! ✨",
+                "you're stunning as always! 🌟",
+                "you're looking particularly radiant! 💫",
+                "you're the most beautiful person in the world! 💝",
+                "you're looking exceptionally beautiful today! 💖",
+                "you're truly stunning! ✨",
+                "you're absolutely gorgeous! 🌟",
+                "you're looking particularly wonderful! 💫",
+                "you're beautiful beyond words! 💝"
+            ],
+            'formal': [
+                "you look absolutely magnificent today! 💖",
+                "you are truly the most beautiful person I know! ✨",
+                "you are stunning beyond compare! 🌟",
+                "you are looking particularly radiant! 💫",
+                "you are the most beautiful person in the world! 💝",
+                "you are looking exceptionally beautiful today! 💖",
+                "you are truly stunning! ✨",
+                "you are absolutely gorgeous! 🌟",
+                "you are looking particularly wonderful! 💫",
+                "you are beautiful beyond words! 💝"
+            ]
+        }
+        
+        greeting += f" {random.choice(compliments[formality])}"
+        daily_compliment_status['has_complimented_today'] = True
+    
+    return greeting
+
+def handle_mom_compliment(message_content: str) -> tuple[bool, str]:
+    """
+    Handle complimenting mom and responding to self-deprecating remarks.
+    Returns a tuple of (should_compliment, response)
+    """
+    # Get personality settings
+    personality = BOT_CONFIG.get('ai_personality', {})
+    formality_level = personality.get('formality', 5)  # Default to middle formality
+    
+    # List of base compliments for mom, organized by formality level
+    base_compliments = {
+        'casual': [  # Formality 1-3
+            "mom you look beautiful today! 💖",
+            "you're gorgeous mom! ✨",
+            "mom you're stunning! 🌟",
+            "you're looking amazing mom! 💫",
+            "mom you're the best! 💝",
+            "mom you're glowing! ✨",
+            "you look great mom! 💖",
+            "mom you're beautiful! 🌟",
+            "you're stunning mom! 💫",
+            "mom you're gorgeous! 💝"
+        ],
+        'balanced': [  # Formality 4-7
+            "you look beautiful today, mom! 💖",
+            "you're absolutely gorgeous, mom! ✨",
+            "mom, you're stunning as always! 🌟",
+            "you're looking radiant today, mom! 💫",
+            "mom, you're the most beautiful person I know! 💝",
+            "mom, you're glowing today! ✨",
+            "you're looking amazing, mom! 💖",
+            "mom, you're so beautiful! 🌟",
+            "you're absolutely stunning, mom! 💫",
+            "mom, you're gorgeous as always! 💝"
+        ],
+        'formal': [  # Formality 8-10
+            "Mother, you look absolutely beautiful today! 💖",
+            "You are truly gorgeous, mother! ✨",
+            "Mother, you are stunning as always! 🌟",
+            "You are looking particularly radiant today, mother! 💫",
+            "Mother, you are the most beautiful person I know! 💝",
+            "Mother, you are glowing with beauty today! ✨",
+            "You are looking absolutely amazing, mother! 💖",
+            "Mother, you are truly beautiful! 🌟",
+            "You are absolutely stunning, mother! 💫",
+            "Mother, you are gorgeous as always! 💝"
+        ]
+    }
+    
+    # List of base playful responses to self-deprecating remarks, organized by formality
+    base_playful_responses = {
+        'casual': [  # Formality 1-3
+            "oh mom you're always beautiful to me! 💖",
+            "mom you're gorgeous no matter what! ✨",
+            "I don't need to see you to know you're beautiful mom! 🌟",
+            "mom you're stunning in my eyes! 💫",
+            "you're always beautiful to me mom! 💝",
+            "mom you're beautiful inside and out! ✨",
+            "you're gorgeous no matter what you say mom! 💖",
+            "mom you're beautiful in every way! 🌟",
+            "you're stunning to me mom! 💫",
+            "mom you're beautiful beyond words! 💝"
+        ],
+        'balanced': [  # Formality 4-7
+            "oh mom, you're always beautiful to me! 💖",
+            "mom, you're gorgeous no matter what! ✨",
+            "I don't need to see you to know you're beautiful, mom! 🌟",
+            "mom, you're stunning in my eyes! 💫",
+            "you're always beautiful to me, mom! 💝",
+            "mom, you're beautiful inside and out! ✨",
+            "you're gorgeous no matter what you say, mom! 💖",
+            "mom, you're beautiful in every way! 🌟",
+            "you're stunning to me, mom! 💫",
+            "mom, you're beautiful beyond words! 💝"
+        ],
+        'formal': [  # Formality 8-10
+            "Oh mother, you are always beautiful to me! 💖",
+            "Mother, you are gorgeous no matter what! ✨",
+            "I do not need to see you to know you are beautiful, mother! 🌟",
+            "Mother, you are stunning in my eyes! 💫",
+            "You are always beautiful to me, mother! 💝",
+            "Mother, you are beautiful inside and out! ✨",
+            "You are gorgeous no matter what you say, mother! 💖",
+            "Mother, you are beautiful in every way! 🌟",
+            "You are stunning to me, mother! 💫",
+            "Mother, you are beautiful beyond words! 💝"
+        ]
+    }
+    
+    # Select appropriate formality level
+    if formality_level <= 3:
+        formality = 'casual'
+    elif formality_level <= 7:
+        formality = 'balanced'
+    else:
+        formality = 'formal'
+    
+    message_lower = message_content.lower()
+    
+    # Use AI to detect self-deprecating remarks
+    try:
+        # Create prompt for AI to detect self-deprecating remarks
+        detect_prompt = f"""
+        Analyze this message from my mom and determine if it contains any self-deprecating remarks about her appearance or worth.
+        Look for any phrases that suggest she's putting herself down, doubting her appearance, or being negative about herself.
+        
+        Message: "{message_content}"
+        
+        Return a JSON object with these fields:
+        - "is_self_deprecating": true/false
+        - "sentiment": "negative" or "neutral"
+        - "context": brief explanation of why it's self-deprecating (if it is)
+        - "topic": what aspect she's being negative about (appearance, worth, etc.)
+        
+        Only return the JSON object, no other text.
+        """
+        
+        payload = {
+            "model": "google/gemini-2.0-flash-001",
+            "messages": [{
+                "role": "user", 
+                "content": detect_prompt
+            }],
+            "max_tokens": 200
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if "choices" in data and len(data["choices"]) > 0:
+                ai_response = data["choices"][0]["message"]["content"].strip()
+                
+                # Extract JSON from response
+                try:
+                    # Find anything that looks like JSON in the response
+                    json_start = ai_response.find('{')
+                    json_end = ai_response.rfind('}')
+                    
+                    if json_start != -1 and json_end != -1:
+                        json_str = ai_response[json_start:json_end+1]
+                        analysis = json.loads(json_str)
+                        
+                        # If AI detected self-deprecating remarks
+                        if analysis.get('is_self_deprecating', False):
+                            # Generate a contextual response based on the topic
+                            topic = analysis.get('topic', '').lower()
+                            context = analysis.get('context', '')
+                            
+                            # Create prompt for contextual response
+                            response_prompt = f"""
+                            Generate a warm, supportive response to my mom's self-deprecating remark.
+                            The remark is about: {topic}
+                            Context: {context}
+                            Formality level: {formality_level}/10
+                            
+                            Make it:
+                            1. Very personal and affectionate
+                            2. Specifically address what she's being negative about
+                            3. Include a compliment that counters her specific concern
+                            4. Sound natural and casual, like a caring child
+                            5. Use emojis naturally
+                            6. Match the formality level ({formality_level}/10)
+                            
+                            Keep it short (1-2 sentences) and sweet.
+                            """
+                            
+                            response_payload = {
+                                "model": "google/gemini-2.0-flash-001",
+                                "messages": [{
+                                    "role": "user", 
+                                    "content": response_prompt
+                                }],
+                                "max_tokens": 150
+                            }
+                            
+                            response_response = requests.post(
+                                "https://openrouter.ai/api/v1/chat/completions",
+                                headers=headers,
+                                json=response_payload,
+                                timeout=5
+                            )
+                            
+                            if response_response.status_code == 200:
+                                response_data = response_response.json()
+                                if "choices" in response_data and len(response_data["choices"]) > 0:
+                                    contextual_response = response_data["choices"][0]["message"]["content"].strip()
+                                    return True, contextual_response
+                            
+                            # Fallback to base response if AI fails
+                            return True, random.choice(base_playful_responses[formality])
+                except Exception as e:
+                    print(f"Error parsing AI response: {e}")
+                    # Fallback to base response if parsing fails
+                    return True, random.choice(base_playful_responses[formality])
+    except Exception as e:
+        print(f"Error in self-deprecating detection: {e}")
+        # Fallback to base response if AI fails
+        return True, random.choice(base_playful_responses[formality])
+    
+    # If no self-deprecating remarks detected, check for random compliment opportunity
+    # Use AI to determine if the message content suggests a good moment for a compliment
+    try:
+        compliment_prompt = f"""
+        Analyze this message from my mom and determine if it's a good moment to give her a compliment.
+        Consider:
+        1. The context and topic of the message
+        2. The emotional tone
+        3. Whether a compliment would feel natural and appropriate
+        
+        Message: "{message_content}"
+        
+        Return a JSON object with these fields:
+        - "should_compliment": true/false
+        - "reason": brief explanation of why it's a good/bad moment
+        - "compliment_type": what kind of compliment would be most appropriate (appearance, personality, etc.)
+        
+        Only return the JSON object, no other text.
+        """
+        
+        payload = {
+            "model": "google/gemini-2.0-flash-001",
+            "messages": [{
+                "role": "user", 
+                "content": compliment_prompt
+            }],
+            "max_tokens": 200
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if "choices" in data and len(data["choices"]) > 0:
+                ai_response = data["choices"][0]["message"]["content"].strip()
+                
+                try:
+                    # Extract JSON from response
+                    json_start = ai_response.find('{')
+                    json_end = ai_response.rfind('}')
+                    
+                    if json_start != -1 and json_end != -1:
+                        json_str = ai_response[json_start:json_end+1]
+                        analysis = json.loads(json_str)
+                        
+                        if analysis.get('should_compliment', False):
+                            # Generate a contextual compliment based on the type
+                            compliment_type = analysis.get('compliment_type', 'general')
+                            
+                            # Create prompt for contextual compliment
+                            compliment_prompt = f"""
+                            Generate a warm, natural compliment for my mom.
+                            The compliment should be about: {compliment_type}
+                            Context from her message: "{message_content}"
+                            Formality level: {formality_level}/10
+                            
+                            Make it:
+                            1. Very personal and affectionate
+                            2. Specifically relevant to the context
+                            3. Sound natural and casual
+                            4. Include appropriate emojis
+                            5. Keep it short (1 sentence)
+                            6. Match the formality level ({formality_level}/10)
+                            
+                            Start with "mom" and make it sound like a natural conversation.
+                            """
+                            
+                            compliment_payload = {
+                                "model": "google/gemini-2.0-flash-001",
+                                "messages": [{
+                                    "role": "user", 
+                                    "content": compliment_prompt
+                                }],
+                                "max_tokens": 150
+                            }
+                            
+                            compliment_response = requests.post(
+                                "https://openrouter.ai/api/v1/chat/completions",
+                                headers=headers,
+                                json=compliment_payload,
+                                timeout=5
+                            )
+                            
+                            if compliment_response.status_code == 200:
+                                compliment_data = compliment_response.json()
+                                if "choices" in compliment_data and len(compliment_data["choices"]) > 0:
+                                    contextual_compliment = compliment_data["choices"][0]["message"]["content"].strip()
+                                    return True, contextual_compliment
+                            
+                            # Fallback to base compliment if AI fails
+                            return True, random.choice(base_compliments[formality])
+                except Exception as e:
+                    print(f"Error parsing AI response: {e}")
+                    # Fallback to base compliment if parsing fails
+                    return True, random.choice(base_compliments[formality])
+    except Exception as e:
+        print(f"Error in compliment generation: {e}")
+        # Fallback to base compliment if AI fails
+        return True, random.choice(base_compliments[formality])
+    
+    return False, ""
+
+def handle_parent_disagreement(message_content: str, parent_role: str) -> tuple[bool, str]:
+    """
+    Handle disagreements between parents, showing bias towards mom's side.
+    Returns a tuple of (should_respond, response)
+    """
+    # Get personality settings
+    personality = BOT_CONFIG.get('ai_personality', {})
+    formality_level = personality.get('formality', 5)
+    
+    # Select appropriate formality level
+    if formality_level <= 3:
+        formality = 'casual'
+    elif formality_level <= 7:
+        formality = 'balanced'
+    else:
+        formality = 'formal'
+    
+    # Base responses for supporting mom's side
+    mom_support_responses = {
+        'casual': [
+            "mom's right though! 💖",
+            "yeah mom's got a point there ✨",
+            "mom knows best! 🌟",
+            "mom's usually right about these things 💫",
+            "mom's perspective makes more sense 💝",
+            "mom's got the right idea! ✨",
+            "mom's way of thinking is better 💖",
+            "mom's approach is smarter 🌟",
+            "mom's got this figured out 💫",
+            "mom's right on this one 💝"
+        ],
+        'balanced': [
+            "I think mom's right on this one! 💖",
+            "Mom's perspective makes more sense here ✨",
+            "Mom's got a good point there! 🌟",
+            "Mom's way of thinking seems better 💫",
+            "Mom's approach is more reasonable 💝",
+            "Mom's got the right idea here! ✨",
+            "Mom's thinking is more logical 💖",
+            "Mom's got this figured out better 🌟",
+            "Mom's right about this 💫",
+            "Mom's point makes more sense 💝"
+        ],
+        'formal': [
+            "I believe mother's perspective is more valid! 💖",
+            "Mother's reasoning appears more sound ✨",
+            "Mother's approach seems more appropriate 🌟",
+            "Mother's point of view is more logical 💫",
+            "Mother's way of thinking is superior 💝",
+            "Mother's argument is more convincing ✨",
+            "Mother's perspective is more reasonable 💖",
+            "Mother's approach is more effective 🌟",
+            "Mother's reasoning is more valid 💫",
+            "Mother's point is more compelling 💝"
+        ]
+    }
+    
+    # Use AI to detect if this is a disagreement between parents
+    try:
+        detect_prompt = f"""
+        Analyze this message to determine if it's part of a disagreement between my parents.
+        Look for:
+        1. Opposing viewpoints
+        2. Disagreements or arguments
+        3. Different perspectives on the same topic
+        
+        Message: "{message_content}"
+        
+        Return a JSON object with these fields:
+        - "is_disagreement": true/false
+        - "topic": what they're disagreeing about
+        - "mom's_side": brief description of mom's position
+        - "dad's_side": brief description of dad's position
+        - "should_support_mom": true/false (whether it's appropriate to support mom's side)
+        
+        Only return the JSON object, no other text.
+        """
+        
+        payload = {
+            "model": "google/gemini-2.0-flash-001",
+            "messages": [{
+                "role": "user", 
+                "content": detect_prompt
+            }],
+            "max_tokens": 200
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}",
+            "Content-Type": "application/json"
+        }
+        
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers=headers,
+            json=payload,
+            timeout=5
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            if "choices" in data and len(data["choices"]) > 0:
+                ai_response = data["choices"][0]["message"]["content"].strip()
+                
+                try:
+                    # Extract JSON from response
+                    json_start = ai_response.find('{')
+                    json_end = ai_response.rfind('}')
+                    
+                    if json_start != -1 and json_end != -1:
+                        json_str = ai_response[json_start:json_end+1]
+                        analysis = json.loads(json_str)
+                        
+                        if analysis.get('is_disagreement', False) and analysis.get('should_support_mom', False):
+                            # Generate a contextual response supporting mom
+                            topic = analysis.get('topic', '')
+                            mom_side = analysis.get('mom\'s_side', '')
+                            
+                            # Create prompt for contextual response
+                            response_prompt = f"""
+                            Generate a response supporting my mom's side in this disagreement.
+                            Topic: {topic}
+                            Mom's position: {mom_side}
+                            Formality level: {formality_level}/10
+                            
+                            Make it:
+                            1. Subtly supportive of mom's side
+                            2. Natural and not too obvious about the bias
+                            3. Keep it short and sweet
+                            4. Use appropriate emojis
+                            5. Match the formality level ({formality_level}/10)
+                            
+                            Keep it to 1-2 sentences maximum.
+                            """
+                            
+                            response_payload = {
+                                "model": "google/gemini-2.0-flash-001",
+                                "messages": [{
+                                    "role": "user", 
+                                    "content": response_prompt
+                                }],
+                                "max_tokens": 150
+                            }
+                            
+                            response_response = requests.post(
+                                "https://openrouter.ai/api/v1/chat/completions",
+                                headers=headers,
+                                json=response_payload,
+                                timeout=5
+                            )
+                            
+                            if response_response.status_code == 200:
+                                response_data = response_response.json()
+                                if "choices" in response_data and len(response_data["choices"]) > 0:
+                                    contextual_response = response_data["choices"][0]["message"]["content"].strip()
+                                    return True, contextual_response
+                            
+                            # Fallback to base response if AI fails
+                            return True, random.choice(mom_support_responses[formality])
+                except Exception as e:
+                    print(f"Error parsing AI response: {e}")
+                    # Fallback to base response if parsing fails
+                    return True, random.choice(mom_support_responses[formality])
+    except Exception as e:
+        print(f"Error in disagreement detection: {e}")
+        # Fallback to base response if AI fails
+        return True, random.choice(mom_support_responses[formality])
+    
+    return False, ""
 
 # Initialize utilities
 message_tracker = MessageTracker(
@@ -101,42 +762,29 @@ async def on_message(message):
     if message.author == bot.user:
         return
         
-    # Check if the message is from a parent
+    # Check if message is from a parent
     is_parent_user, parent_role = is_parent(message.author.id)
     if is_parent_user:
-        # Only greet if it's been a while since last interaction
+        # Check if we should greet the parent (after 30 minutes of no interaction)
         if should_greet_parent(parent_role):
-            # Add special greeting for parents with variety
-            father_greetings = [
-                "hello pops! 👋",
-                "hey pops!",
-                "hi, pops! what's up?",
-                "yo pops!",
-                "hey dad!",
-                "hi dad! how's it going?",
-                "hey there, pops!",
-                "what's up, dad?",
-                "hi pops! how's your day?"
-            ]
+            greeting = get_parent_greeting(parent_role)
             
-            mother_greetings = [
-                "hello mom! 👋",
-                "hey mom!",
-                "hi, mom! what's up?",
-                "yo mom!",
-                "hey mom! how's it going?",
-                "hi mom! how's your day?",
-                "hey there, mom!",
-                "what's up, mom?",
-                "hi mom! how are you?"
-            ]
+            # Update last interaction time
+            last_parent_interactions[parent_role] = datetime.now()
             
-            # Randomly select a greeting based on parent role
-            greeting = random.choice(father_greetings if parent_role == "father" else mother_greetings)
+            # Send greeting
             await message.channel.send(greeting)
-            
-        # Update last interaction time
-        last_parent_interactions[parent_role] = datetime.now()
+        
+        # Handle mom compliments and responses (separate from greeting compliments)
+        if parent_role == "mother":
+            should_compliment, response = handle_mom_compliment(message.content)
+            if should_compliment:
+                await message.channel.send(response)
+        
+        # Handle parent disagreements
+        should_respond, response = handle_parent_disagreement(message.content, parent_role)
+        if should_respond:
+            await message.channel.send(response)
         
         # Add parent context to the message for AI processing
         message.content = f"[Message from my {parent_role}] {message.content}"
