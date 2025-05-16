@@ -12,7 +12,6 @@ from utils.ai_handler import AIHandler
 from utils.channel_manager import ChannelManager
 from utils.decision_engine import DecisionEngine
 from config import BOT_CONFIG
-from config import PARENTS
 from datetime import datetime, timedelta
 import typing
 import requests
