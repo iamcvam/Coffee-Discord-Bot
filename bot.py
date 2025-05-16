@@ -30,6 +30,12 @@ intents.guilds = True
 # Use a hidden command prefix nobody would use accidentally
 bot = commands.Bot(command_prefix='$$!Coffee!$$', intents=intents, help_command=None)
 
+# Track last parent interactions
+last_parent_interactions = {
+    'father': None,
+    'mother': None
+}
+
 def is_parent(user_id: int) -> tuple[bool, str]:
     """
     Check if a user is one of Coffee's parents.
@@ -40,6 +46,17 @@ def is_parent(user_id: int) -> tuple[bool, str]:
     elif str(user_id) == str(BOT_CONFIG['parents']['mother_id']):
         return True, "mother"
     return False, None
+
+def should_greet_parent(parent_role: str) -> bool:
+    """
+    Check if we should greet the parent based on time since last interaction
+    """
+    last_interaction = last_parent_interactions[parent_role]
+    if last_interaction is None:
+        return True
+    
+    time_since_last = datetime.now() - last_interaction
+    return time_since_last > timedelta(minutes=30)
 
 # Initialize utilities
 message_tracker = MessageTracker(
@@ -87,34 +104,39 @@ async def on_message(message):
     # Check if the message is from a parent
     is_parent_user, parent_role = is_parent(message.author.id)
     if is_parent_user:
-        # Add special greeting for parents with variety
-        father_greetings = [
-            "hello pops! 👋",
-            "hey pops!",
-            "hi, pops! what's up?",
-            "yo pops!",
-            "hey dad!",
-            "hi dad! how's it going?",
-            "hey there, pops!",
-            "what's up, dad?",
-            "hi pops! how's your day?"
-        ]
-        
-        mother_greetings = [
-            "hello mom! 👋",
-            "hey mom!",
-            "hi, mom! what's up?",
-            "yo mom!",
-            "hey mom! how's it going?",
-            "hi mom! how's your day?",
-            "hey there, mom!",
-            "what's up, mom?",
-            "hi mom! how are you?"
-        ]
-        
-        # Randomly select a greeting based on parent role
-        greeting = random.choice(father_greetings if parent_role == "father" else mother_greetings)
-        await message.channel.send(greeting)
+        # Only greet if it's been a while since last interaction
+        if should_greet_parent(parent_role):
+            # Add special greeting for parents with variety
+            father_greetings = [
+                "hello pops! 👋",
+                "hey pops!",
+                "hi, pops! what's up?",
+                "yo pops!",
+                "hey dad!",
+                "hi dad! how's it going?",
+                "hey there, pops!",
+                "what's up, dad?",
+                "hi pops! how's your day?"
+            ]
+            
+            mother_greetings = [
+                "hello mom! 👋",
+                "hey mom!",
+                "hi, mom! what's up?",
+                "yo mom!",
+                "hey mom! how's it going?",
+                "hi mom! how's your day?",
+                "hey there, mom!",
+                "what's up, mom?",
+                "hi mom! how are you?"
+            ]
+            
+            # Randomly select a greeting based on parent role
+            greeting = random.choice(father_greetings if parent_role == "father" else mother_greetings)
+            await message.channel.send(greeting)
+            
+        # Update last interaction time
+        last_parent_interactions[parent_role] = datetime.now()
         
         # Add parent context to the message for AI processing
         message.content = f"[Message from my {parent_role}] {message.content}"
