@@ -30,6 +30,17 @@ intents.guilds = True
 # Use a hidden command prefix nobody would use accidentally
 bot = commands.Bot(command_prefix='$$!Coffee!$$', intents=intents, help_command=None)
 
+def is_parent(user_id: int) -> tuple[bool, str]:
+    """
+    Check if a user is one of Coffee's parents.
+    Returns a tuple of (is_parent, parent_role)
+    """
+    if str(user_id) == str(BOT_CONFIG['parents']['father_id']):
+        return True, "father"
+    elif str(user_id) == str(BOT_CONFIG['parents']['mother_id']):
+        return True, "mother"
+    return False, None
+
 # Initialize utilities
 message_tracker = MessageTracker(
     context_window=BOT_CONFIG['context_window'],
@@ -72,6 +83,41 @@ async def on_message(message):
     # Ignore messages from the bot itself
     if message.author == bot.user:
         return
+        
+    # Check if the message is from a parent
+    is_parent_user, parent_role = is_parent(message.author.id)
+    if is_parent_user:
+        # Add special greeting for parents with variety
+        father_greetings = [
+            "hello pops! 👋",
+            "hey pops!",
+            "hi, pops! what's up?",
+            "yo pops!",
+            "hey dad!",
+            "hi dad! how's it going?",
+            "hey there, pops!",
+            "what's up, dad?",
+            "hi pops! how's your day?"
+        ]
+        
+        mother_greetings = [
+            "hello mom! 👋",
+            "hey mom!",
+            "hi, mom! what's up?",
+            "yo mom!",
+            "hey mom! how's it going?",
+            "hi mom! how's your day?",
+            "hey there, mom!",
+            "what's up, mom?",
+            "hi mom! how are you?"
+        ]
+        
+        # Randomly select a greeting based on parent role
+        greeting = random.choice(father_greetings if parent_role == "father" else mother_greetings)
+        await message.channel.send(greeting)
+        
+        # Add parent context to the message for AI processing
+        message.content = f"[Message from my {parent_role}] {message.content}"
         
     # Process commands first
     await bot.process_commands(message)
@@ -2983,6 +3029,42 @@ async def list_command_access(interaction: discord.Interaction):
     embed.add_field(name="Note", value="Users with manage_messages or administrator permissions can always use Coffee commands regardless of roles", inline=False)
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="setparents", description="Set Coffee's parent Discord IDs")
+@app_commands.describe(
+    father_id="Discord user ID for Coffee's father (Shivam)",
+    mother_id="Discord user ID for Coffee's mother (Nishtha)"
+)
+async def set_parents(
+    interaction: discord.Interaction,
+    father_id: str = None,
+    mother_id: str = None
+):
+    # Check if user is admin
+    if not is_admin(interaction):
+        await interaction.response.send_message("Only admins can set parent IDs.", ephemeral=True)
+        return
+        
+    # Update parent IDs if provided
+    if father_id is not None:
+        BOT_CONFIG['parents']['father_id'] = father_id
+    if mother_id is not None:
+        BOT_CONFIG['parents']['mother_id'] = mother_id
+        
+    # Save configuration
+    save_config()
+    
+    # Show current parent IDs
+    father = BOT_CONFIG['parents']['father_id']
+    mother = BOT_CONFIG['parents']['mother_id']
+    
+    response = "Parent IDs updated:\n"
+    if father:
+        response += f"Father (Shivam): {father}\n"
+    if mother:
+        response += f"Mother (Nishtha): {mother}\n"
+        
+    await interaction.response.send_message(response, ephemeral=True)
 
 # Run the bot
 if __name__ == "__main__":
