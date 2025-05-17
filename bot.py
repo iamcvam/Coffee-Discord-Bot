@@ -115,7 +115,17 @@ def get_parent_greeting(parent_role: str) -> str:
                 "what's happening, pops?",
                 "hi dad! what's new?",
                 "hey pops! how's everything?",
-                "what's up, pops?"
+                "what's up, pops?",
+                "hey papa!",
+                "hi papa!",
+                "yo pop!",
+                "hey pop!",
+                "hi pop!",
+                "hey pa!",
+                "hi pa!",
+                "yo pa!",
+                "hey dada!",
+                "hi dada!"
             ],
             'balanced': [
                 "Hello dad!",
@@ -127,14 +137,24 @@ def get_parent_greeting(parent_role: str) -> str:
                 "Hi pops!",
                 "Hey there pops!",
                 "Hello there pops!",
-                "Hi there pops!"
+                "Hi there pops!",
+                "Hello papa!",
+                "Hi papa!",
+                "Hey there papa!",
+                "Hello there papa!",
+                "Hi there papa!"
             ],
             'formal': [
                 "Hello father!",
                 "Greetings father!",
                 "Good day father!",
                 "Hello there father!",
-                "Greetings to you father!"
+                "Greetings to you father!",
+                "Hello papa!",
+                "Greetings papa!",
+                "Good day papa!",
+                "Hello there papa!",
+                "Greetings to you papa!"
             ]
         },
         'mother': {
@@ -153,7 +173,17 @@ def get_parent_greeting(parent_role: str) -> str:
                 "hey there, mommy! 💫",
                 "hi mom! what's new? ✨",
                 "hey mommy! how's everything? 💖",
-                "hi mom! how are you doing? 💝"
+                "hi mom! how are you doing? 💝",
+                "hey mama! 💖",
+                "hi mama! 💝",
+                "hey mum! 💫",
+                "hi mum! ✨",
+                "hey mummy! 💖",
+                "hi mummy! 💝",
+                "hey ma! 💫",
+                "hi ma! ✨",
+                "hey mamma! 💖",
+                "hi mamma! 💝"
             ],
             'balanced': [
                 "Hello mom! 💖",
@@ -165,14 +195,24 @@ def get_parent_greeting(parent_role: str) -> str:
                 "Hi mother! 💫",
                 "Hey there mother! ✨",
                 "Hello there mother! 💖",
-                "Hi there mother! 💝"
+                "Hi there mother! 💝",
+                "Hello mama! 💖",
+                "Hi mama! How are you today? 💝",
+                "Hey there mama! 💫",
+                "Hello there mama! ✨",
+                "Hi there mama! 💖"
             ],
             'formal': [
                 "Hello mother! 💖",
                 "Greetings mother! 💝",
                 "Good day mother! 💫",
                 "Hello there mother! ✨",
-                "Greetings to you mother! 💖"
+                "Greetings to you mother! 💖",
+                "Hello mama! 💖",
+                "Greetings mama! 💝",
+                "Good day mama! 💫",
+                "Hello there mama! ✨",
+                "Greetings to you mama! 💖"
             ]
         }
     }
@@ -788,7 +828,41 @@ async def on_message(message):
         
         # Add parent context to the message for AI processing
         message.content = f"[Message from my {parent_role}] {message.content}"
+    else:
+        # For non-parent messages, check if they're talking about parents
+        # Add context to clarify if they're talking about their own parents or Coffee's parents
+        parent_keywords = [
+            # Mother variations
+            'mom', 'mommy', 'mama', 'mum', 'mummy', 'mother', 'ma', 'mamma', 'mammy', 'mumsy',
+            # Father variations
+            'dad', 'daddy', 'papa', 'pop', 'father', 'pa', 'pops', 'dada', 'pappy', 'dadster',
+            # General parent terms
+            'parents', 'parent', 'guardian', 'guardians', 'caregiver', 'caregivers',
+            # Family terms that might indicate parents
+            'family', 'families', 'folks', 'folx'
+        ]
+        message_lower = message.content.lower()
         
+        # Check if message contains parent-related keywords
+        if any(keyword in message_lower for keyword in parent_keywords):
+            # Check if they're talking about Coffee's parents using possessive pronouns
+            coffee_parent_indicators = [
+                # Mother variations
+                'your mom', 'your mommy', 'your mama', 'your mum', 'your mummy', 'your mother', 'your ma',
+                # Father variations
+                'your dad', 'your daddy', 'your papa', 'your pop', 'your father', 'your pa',
+                # General parent terms
+                'your parents', 'your parent', 'your guardian', 'your guardians',
+                # Family terms
+                'your family', 'your folks'
+            ]
+            if any(indicator in message_lower for indicator in coffee_parent_indicators):
+                # Add context to clarify they're talking about Coffee's parents
+                message.content = f"[Message about Coffee's parents] {message.content}"
+            else:
+                # Add context to clarify they're talking about their own parents
+                message.content = f"[Message about user's own parents] {message.content}"
+    
     # Process commands first
     await bot.process_commands(message)
     
